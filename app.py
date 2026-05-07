@@ -334,9 +334,6 @@ for key, default in [
     ("system_prompt",      ""),
     ("modal_editing_name", False),
     ("_imported_hashes",   set()),
-    ("_last_media_hash",   None),
-    # Pending attachment — cleared after send or cancel
-    ("_pending_img",       None),  # dict: {bytes, ext, mime, data_url} or None
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -354,7 +351,6 @@ if _action:
         st.session_state.actions_open       = None
         st.session_state.system_prompt      = ""
         st.session_state.modal_editing_name = False
-        st.session_state._pending_img       = None
 
     elif _action == "toggle_settings":
         st.session_state.show_settings = not st.session_state.show_settings
@@ -371,7 +367,6 @@ if _action:
             st.session_state.actions_open       = None
             st.session_state.system_prompt      = sp
             st.session_state.modal_editing_name = False
-            st.session_state._pending_img       = None
 
     elif _action.startswith("menu_"):
         fname = _action[5:]
@@ -398,7 +393,6 @@ if _action:
             st.session_state.messages          = []
             st.session_state.last_model_used   = None
             st.session_state.system_prompt     = ""
-            st.session_state._pending_img      = None
         st.session_state.actions_open = None
 
     st.rerun()
@@ -542,94 +536,6 @@ hr{border-color:#111!important;}
 ::-webkit-scrollbar-thumb:hover{background:#252525;}
 [data-testid="stExpander"]{
     background:#0f0f0f!important;border:1px solid #1a1a1a!important;border-radius:10px!important;
-}
-
-/* ── Minimal attachment uploader — scoped to main content (not sidebar) ── */
-.block-container [data-testid="stFileUploader"]{
-    border:none!important;background:transparent!important;
-    padding:0!important;margin:0!important;
-}
-.block-container [data-testid="stFileUploaderDropzone"]{
-    border:none!important;padding:0!important;
-    min-height:0!important;background:transparent!important;
-    display:flex!important;align-items:center!important;
-    gap:0!important;
-}
-/* Hide "Drag and drop / limit" instruction text */
-.block-container [data-testid="stFileUploaderDropzoneInstructions"]{
-    display:none!important;
-}
-/* Hide file name row after selection (we show our own thumbnail) */
-.block-container [data-testid="stFileUploaderFileName"],
-.block-container [data-testid="stFileUploaderDeleteBtn"],
-.block-container [data-testid="stFileUploader"] small,
-.block-container [data-testid="stFileUploader"] section > div:last-child{
-    display:none!important;
-}
-/* Browse button → tiny clip-icon button */
-.block-container [data-testid="stFileUploader"] button{
-    background:transparent!important;
-    border:1px solid #1e1e1e!important;
-    border-radius:8px!important;
-    color:#3a3a3a!important;
-    padding:0!important;
-    font-size:0!important;
-    line-height:0!important;
-    min-height:0!important;
-    height:30px!important;
-    width:30px!important;
-    display:inline-flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    transition:color 0.15s,border-color 0.15s!important;
-    flex-shrink:0!important;
-}
-/* Show clip icon via pseudo-element */
-.block-container [data-testid="stFileUploader"] button::before{
-    content:"📎";
-    font-size:14px!important;
-    line-height:1!important;
-}
-.block-container [data-testid="stFileUploader"] button:hover{
-    color:#888!important;border-color:#2a2a2a!important;background:transparent!important;
-}
-/* Hide any text/span inside the button */
-.block-container [data-testid="stFileUploader"] button > *{
-    display:none!important;
-}
-
-/* ── Thumbnail preview strip ── */
-.nhk-thumb-strip{
-    display:flex;align-items:center;gap:8px;
-    padding:6px 2px 2px 2px;
-}
-.nhk-thumb{
-    width:52px;height:52px;border-radius:8px;
-    object-fit:cover;border:1px solid #2a2a2a;
-    display:block;flex-shrink:0;
-}
-.nhk-thumb-cancel{
-    display:inline-flex;align-items:center;justify-content:center;
-    width:18px;height:18px;border-radius:50%;
-    background:#1e1e1e;border:1px solid #2a2a2a;
-    color:#555;font-size:0.6rem;cursor:pointer;
-    line-height:1;flex-shrink:0;
-    transition:background 0.15s,color 0.15s;
-}
-.nhk-thumb-cancel:hover{background:#2a1a1a!important;color:#e05555!important;}
-.nhk-thumb-name{
-    font-size:0.7rem;color:#444;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;
-}
-
-/* ── Sidebar download button ── */
-[data-testid="stDownloadButton"] button{
-    background:#111!important;color:#888!important;
-    border:1px solid #1e1e1e!important;border-radius:8px!important;
-    font-size:0.78rem!important;
-}
-[data-testid="stDownloadButton"] button:hover{
-    background:#181818!important;color:#ccc!important;border-color:#2a2a2a!important;
 }
 
 /* ── Dialog / modal ── */
@@ -1000,111 +906,87 @@ for msg in st.session_state.messages:
         else:
             st.markdown(content)
 
-# ── Attachment area ──────────────────────────────────────────────────────────[...]
-# Thumbnail preview row (shown while an image is pending, before send)
-if st.session_state._pending_img is not None:
-    pending = st.session_state._pending_img
-    st.markdown(
-        f'<div style="display:flex;align-items:center;gap:10px;'
-        f'padding:4px 2px 6px 2px;">'
-        f'  <img src="{pending["data_url"]}" '
-        f'       style="width:48px;height:48px;border-radius:8px;'
-        f'              object-fit:cover;border:1px solid #2a2a2a;'
-        f'              display:block;flex-shrink:0;"/>'
-        f'  <span style="font-size:0.7rem;color:#444;overflow:hidden;'
-        f'               text-overflow:ellipsis;white-space:nowrap;'
-        f'               max-width:200px;flex:1;">{pending["name"]}</span>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-    if st.button("✕  Remover imagem", key="cancel_attachment"):
-        st.session_state._pending_img = None
-        st.rerun()
-
-# File uploader — rendered in a narrow column so CSS can shrink it to clip-icon size
-_attach_col, _ = st.columns([1, 14])
-with _attach_col:
-    uploaded_media = st.file_uploader(
-        "📎",
-        type=["png", "jpg", "jpeg", "webp", "gif"],
-        key="chat_media_upload",
-        label_visibility="collapsed",
-    )
-
-# Detect new file → store as pending, trigger rerun to show thumbnail
-if uploaded_media is not None:
-    new_hash = file_hash(uploaded_media)
-    if new_hash != st.session_state._last_media_hash:
-        img_bytes = uploaded_media.getvalue()
-        ext  = uploaded_media.name.rsplit(".", 1)[-1].lower()
-        mime = "jpeg" if ext in ("jpg", "jpeg") else ext
-        b64  = base64.b64encode(img_bytes).decode()
-        st.session_state._pending_img = {
-            "bytes":    img_bytes,
-            "ext":      ext,
-            "mime":     mime,
-            "data_url": f"data:image/{mime};base64,{b64}",
-            "name":     uploaded_media.name,
-        }
-        st.session_state._last_media_hash = new_hash
-        st.rerun()
-
 # ── Chat input ────────────────────────────────────────────────────────────[...]
-user_input = st.chat_input("Mensagem para Nahki...")
+prompt = st.chat_input("Mensagem", accept_file=True, file_type=["png", "jpg", "jpeg"])
 
-# Send when user submits (Enter): requires text OR pending image
-if user_input is not None and (user_input.strip() or st.session_state._pending_img is not None):
-    pending = st.session_state._pending_img
-
-    # Build user content
-    if pending is not None:
-        user_content = [
-            {"type": "image_url", "image_url": {"url": pending["data_url"]}},
-        ]
-        text = user_input.strip() if user_input else ""
-        user_content.insert(0, {"type": "text", "text": text if text else "[Imagem enviada]"})
-    else:
-        user_content = user_input.strip()
-
-    # Clear pending
-    st.session_state._pending_img = None
-
-    st.session_state.messages.append({"role": "user", "content": user_content})
-
-    with st.chat_message("user"):
-        if isinstance(user_content, list):
-            for part in user_content:
-                if part.get("type") == "text" and part["text"] != "[Imagem enviada]":
-                    st.markdown(part["text"])
-                elif part.get("type") == "image_url":
-                    st.image(part["image_url"]["url"])
-        else:
-            st.markdown(user_content)
-
-    with st.chat_message("assistant"):
-        with st.spinner(""):
-            api_msgs    = build_messages_for_api(
-                st.session_state.messages, st.session_state.system_prompt
-            )
-            reply, used = call_with_fallback(api_msgs)
-            st.session_state.last_model_used = used
-        st.markdown(reply)
-
-    st.session_state.messages.append({"role": "assistant", "content": reply})
-
-    # Save chat
-    if st.session_state.current_chat_file is None:
-        st.session_state.current_chat_file = new_chat_filename()
-
-    fname  = st.session_state.current_chat_file
-    fpath  = os.path.join(HISTORIES_DIR, fname)
-    prev   = load_chat(fname) if os.path.exists(fpath) else {}
-    save_chat(fname, {
-        "id":            prev.get("id",          fname.replace(".json", "")),
-        "title":         make_title(st.session_state.messages),
-        "pinned":        prev.get("pinned",      False),
-        "cover_image":   prev.get("cover_image", None),
-        "system_prompt": st.session_state.system_prompt,
-        "messages":      st.session_state.messages,
-    })
-    st.rerun()
+# Process chat input
+if prompt is not None:
+    text = prompt.get("text", "").strip() if isinstance(prompt, dict) else ""
+    files = prompt.get("files", []) if isinstance(prompt, dict) else []
+    
+    # Only proceed if there's text or files
+    if text or files:
+        # Build user content
+        user_content = []
+        
+        # Process files first
+        if files:
+            for uploaded_file in files:
+                try:
+                    img_bytes = uploaded_file.read()
+                    ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
+                    mime = "jpeg" if ext in ("jpg", "jpeg") else ext
+                    b64 = base64.b64encode(img_bytes).decode()
+                    
+                    user_content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/{mime};base64,{b64}"
+                        }
+                    })
+                except Exception as e:
+                    st.error(f"Erro ao processar imagem: {e}")
+        
+        # Add text if present
+        if text:
+            user_content.insert(0, {"type": "text", "text": text})
+        elif user_content:
+            # If only images, add placeholder text
+            user_content.insert(0, {"type": "text", "text": "[Imagem enviada]"})
+        
+        # If we have content, proceed
+        if user_content:
+            # Simplify for storage if only text
+            final_content = user_content[0]["text"] if len(user_content) == 1 and user_content[0]["type"] == "text" else user_content
+            
+            st.session_state.messages.append({"role": "user", "content": final_content})
+            
+            # Display user message
+            with st.chat_message("user"):
+                if isinstance(final_content, list):
+                    for part in final_content:
+                        if part.get("type") == "text" and part["text"] != "[Imagem enviada]":
+                            st.markdown(part["text"])
+                        elif part.get("type") == "image_url":
+                            st.image(part["image_url"]["url"])
+                else:
+                    st.markdown(final_content)
+            
+            # Get AI response
+            with st.chat_message("assistant"):
+                with st.spinner(""):
+                    api_msgs = build_messages_for_api(
+                        st.session_state.messages, st.session_state.system_prompt
+                    )
+                    reply, used = call_with_fallback(api_msgs)
+                    st.session_state.last_model_used = used
+                st.markdown(reply)
+            
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+            
+            # Save chat
+            if st.session_state.current_chat_file is None:
+                st.session_state.current_chat_file = new_chat_filename()
+            
+            fname = st.session_state.current_chat_file
+            fpath = os.path.join(HISTORIES_DIR, fname)
+            prev = load_chat(fname) if os.path.exists(fpath) else {}
+            save_chat(fname, {
+                "id":            prev.get("id", fname.replace(".json", "")),
+                "title":         make_title(st.session_state.messages),
+                "pinned":        prev.get("pinned", False),
+                "cover_image":   prev.get("cover_image", None),
+                "system_prompt": st.session_state.system_prompt,
+                "messages":      st.session_state.messages,
+            })
+            st.rerun()
