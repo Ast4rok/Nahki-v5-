@@ -16,7 +16,7 @@ os.makedirs(COVERS_DIR,    exist_ok=True)
 
 IMG_EXTS = {"png", "jpg", "jpeg", "webp", "gif"}
 
-# ── SVG icons ─────────────────────────────────────────────────────────────────
+# ── SVG icons ────────────────────────────────────────────────────────────[...]
 SVG_NEW = (
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
     'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
@@ -68,7 +68,7 @@ SVG_CLIP = (
 )
 
 
-# ── AI Providers ───────────────────────────────────────────────────────────────
+# ── AI Providers ───────────────────────────────────────────────────────────[...]
 def get_providers():
     providers = []
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
@@ -80,6 +80,7 @@ def get_providers():
                 "llama-3.3-70b-versatile",
                 "meta-llama/llama-4-scout-17b-16e-instruct",
                 "llama-3.1-8b-instant",
+                "llama-3.2-11b-vision-preview",
             ],
         })
     return providers
@@ -117,7 +118,7 @@ def call_with_fallback(messages):
     return f"⚠️ Todos os modelos estão indisponíveis. Último erro: {last_err[:120]}", "—"
 
 
-# ── Chat helpers ───────────────────────────────────────────────────────────────
+# ── Chat helpers ───────────────────────────────────────────────────────────[...]
 def text_from_content(content):
     if isinstance(content, str):
         return content.strip()
@@ -322,13 +323,13 @@ def file_hash(uploaded_file):
     return hashlib.md5(uploaded_file.getvalue()).hexdigest()[:16]
 
 
-# ── Page config ────────────────────────────────────────────────────────────────
+# ── Page config ──────────────────────────────────────────────────────────[...]
 st.set_page_config(
     page_title="Nahki", page_icon="◈",
     layout="centered", initial_sidebar_state="auto",
 )
 
-# ── Session state ──────────────────────────────────────────────────────────────
+# ── Session state ─────────────────────────────────────────────────────────[...]
 for key, default in [
     ("current_chat_file",  None),
     ("messages",           []),
@@ -408,7 +409,7 @@ if _action:
     st.rerun()
 
 
-# ── Global CSS ─────────────────────────────────────────────────────────────────
+# ── Global CSS ────────────────────────────────────────────────────────────[...]
 st.markdown("""
 <style>
 html,body,[data-testid="stAppViewContainer"],[data-testid="stApp"]{
@@ -682,7 +683,7 @@ def chat_profile_modal():
     title = data.get("title", "Nova conversa")
     cover = data.get("cover_image")
 
-    # ── Avatar ────────────────────────────────────────────────────────────────
+    # ── Avatar ────────────────────────────────────────────────────────────[...]
     st.markdown(
         f'<div style="display:flex;justify-content:center;margin-bottom:8px;">'
         f'{avatar_html(title, cover, size=72)}</div>',
@@ -694,7 +695,7 @@ def chat_profile_modal():
         unsafe_allow_html=True,
     )
 
-    # ── Cover upload ──────────────────────────────────────────────────────────
+    # ── Cover upload ────────────────────────────────────���─────────────────────
     uploaded = st.file_uploader(
         "Foto de capa",
         type=["png","jpg","jpeg","webp"],
@@ -788,7 +789,7 @@ def chat_profile_modal():
         st.success("Personalidade salva!")
 
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
+# ── Sidebar ─────────────────────────────────────────────────────────────[...]
 with st.sidebar:
 
     # Header
@@ -930,7 +931,7 @@ with st.sidebar:
             st.caption("✓ Já importado")
 
 
-# ── Main area ──────────────────────────────────────────────────────────────────
+# ── Main area ────────────────────────────────────────────────────────────[...]
 
 # Chat header
 if st.session_state.current_chat_file:
@@ -1004,7 +1005,7 @@ for msg in st.session_state.messages:
         else:
             st.markdown(content)
 
-# ── Attachment area ────────────────────────────────────────────────────────────
+# ── Attachment area ──────────────────────────────────────────────────────────[...]
 # Thumbnail preview row (shown while an image is pending, before send)
 if st.session_state._pending_img is not None:
     pending = st.session_state._pending_img
@@ -1053,7 +1054,7 @@ if uploaded_media is not None:
         st.session_state._last_media_hash = new_hash
         st.rerun()
 
-# ── Chat input ─────────────────────────────────────────────────────────────────
+# ── Chat input ────────────────────────────────────────────────────────────[...]
 user_input = st.chat_input("Mensagem para Nahki...")
 
 # Send when user submits (Enter): requires text OR pending image
