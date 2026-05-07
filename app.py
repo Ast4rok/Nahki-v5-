@@ -96,26 +96,21 @@ _SKIP_ERRORS = [
 def call_with_fallback(messages):
     providers = get_providers()
     if not providers:
-        return (
-            "⚠️ Nenhuma chave de API configurada. "
-            "Adicione GROQ_API_KEY nos Secrets.",
-            "—",
-        )
+        return "⚠️ Nenhuma chave configurada.", "—"
+    
+    has_img = any(isinstance(m["content"], list) for m in messages)
+    
     last_err = ""
     for provider in providers:
-        for model in provider["models"]:
+        models_to_try = ["llama-3.2-11b-vision-preview"] if has_img else ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+        for model in models_to_try:
             try:
-                resp = provider["client"].chat.completions.create(
-                    model=model, messages=messages,
-                )
+                resp = provider["client"].chat.completions.create(model=model, messages=messages)
                 return resp.choices[0].message.content or "", f"{provider['name']} · {model}"
             except Exception as e:
-                err = str(e).lower()
                 last_err = str(e)
-                if any(kw in err for kw in _SKIP_ERRORS):
-                    continue
-                return f"❌ Erro inesperado: {e}", f"{provider['name']} · {model}"
-    return f"⚠️ Todos os modelos estão indisponíveis. Último erro: {last_err[:120]}", "—"
+                continue
+    return f"⚠️ Erro: {last_err[:120]}", "—"
 
 
 # ── Chat helpers ───────────────────────────────────────────────────────────[...]
@@ -695,7 +690,7 @@ def chat_profile_modal():
         unsafe_allow_html=True,
     )
 
-    # ── Cover upload ────────────────────────────────────���─────────────────────
+    # ── Cover upload ────────────────────────────────────────────────────────────
     uploaded = st.file_uploader(
         "Foto de capa",
         type=["png","jpg","jpeg","webp"],
